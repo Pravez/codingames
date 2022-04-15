@@ -22,10 +22,6 @@ pub struct Game {
     pub initial_position: Dimension,
 }
 
-pub struct Path {
-
-}
-
 impl Game {
     const POSSIBILITIES: [(i32, i32); 4] = [(-1, 0), (0, -1), (1, 0), (0, 1)];
 
