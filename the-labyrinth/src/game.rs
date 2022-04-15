@@ -1,12 +1,14 @@
+use crate::board::{Board, Path};
 use crate::Config;
 use crate::structures::{Dimension, position_to_direction};
 
 pub struct Game {
     pub config: Config,
     pub console_found: bool,
+    pub path: Path,
 
     pub k: Dimension,
-    pub board: Vec<Vec<char>>,
+    pub board: Board,
     pub initial_position: Dimension,
 }
 
@@ -14,7 +16,8 @@ impl Game {
     const POSSIBILITIES: [(i32, i32); 4] = [(-1, 0), (0, -1), (1, 0), (0, 1)];
 
     pub fn new(config: Config) -> Self {
-        Game { config, k: Default::default(), board: Vec::new(), initial_position: Default::default(), console_found: false }
+        let initial_position = Default::default();
+        Game { config, k: Default::default(), board: Board::new(config.rows.clone() as usize, config.cols.clone() as usize), initial_position, path: Path::new(&initial_position), console_found: false }
     }
 
     pub fn update(&mut self, (k, board, initial_position): (Dimension, Vec<Vec<char>>, Dimension)) {

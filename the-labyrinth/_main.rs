@@ -16,9 +16,10 @@ fn main() {
 pub struct Game {
     pub config: Config,
     pub console_found: bool,
+    pub path: Path,
 
     pub k: Dimension,
-    pub board: Vec<Vec<char>>,
+    pub board: Board,
     pub initial_position: Dimension,
 }
 
@@ -26,7 +27,8 @@ impl Game {
     const POSSIBILITIES: [(i32, i32); 4] = [(-1, 0), (0, -1), (1, 0), (0, 1)];
 
     pub fn new(config: Config) -> Self {
-        Game { config, k: Default::default(), board: Vec::new(), initial_position: Default::default(), console_found: false }
+        let initial_position = Default::default();
+        Game { config, k: Default::default(), board: Board::new(config.rows.clone() as usize, config.cols.clone() as usize), initial_position, path: Path::new(&initial_position), console_found: false }
     }
 
     pub fn update(&mut self, (k, board, initial_position): (Dimension, Vec<Vec<char>>, Dimension)) {
@@ -99,6 +101,81 @@ pub fn position_to_direction(x: i32, y: i32) -> Option<String> {
         (0, 1) => Some("BOTTOM"),
         _ => Option::None
     }.map(|r| String::from(r))
+}use std::collections::HashMap;
+
+pub struct Board {
+    pub rows: usize,
+    pub cols: usize,
+    pub cells: Vec<Vec<Cell>>,
+}
+
+pub struct Cell {
+    pub pos: Dimension,
+    pub value: char,
+    pub is_wall: bool,
+
+    pub directions: HashMap<String, Cell>,
+}
+
+pub struct Path {
+    pub starting_position: &'static Dimension,
+    pub entries: Vec<PathEntry>,
+}
+
+pub struct PathEntry {
+    pub direction: String,
+    pub cell: Cell,
+}
+
+impl Board {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        let mut entries = Vec::new();
+        for y in 0..rows {
+            entries.push((0..rows).map(|x| {
+                Cell { pos: Dimension { x, y }, value: '?', is_wall: true, directions: HashMap::default() }
+            }).collect::<Vec<Cell>>())
+        }
+        for y in 0..rows {
+            for x in 0..cols {
+                let mut directions: Vec<(String, &Cell)> = Vec::new();
+                match y {
+                    y if y > 0 => directions.push((String::from("LEFT"), &entries[y - 1][x])),
+                    y if y < rows - 1 => directions.push((String::from("RIGHT"), &entries[y + 1][x])),
+                    _ => {}
+                }
+                match x {
+                    x if x > 0 => directions.push((String::from("TOP"), &entries[y][x - 1])),
+                    x if x < cols - 1 => directions.push((String::from("BOTTOM"), &entries[y][x + 1])),
+                    _ => {}
+                }
+            }
+        }
+        Board { rows, cols, cells: entries }
+    }
+
+    pub fn update(&mut self, board: &Vec<Vec<char>>) {
+        for y in 0..self.rows {
+            for x in 0..self.cols {
+                self.cells[x][y].update(board[x][y]);
+            }
+        }
+    }
+}
+
+impl Cell {
+    pub fn update(&mut self, value: char) {
+        self.value = value;
+        if let '#' = value { self.is_wall = true }
+    }
+}
+
+impl Path {
+    pub fn new(starting_position: &'static Dimension) -> Self {
+        Path {
+            starting_position,
+            entries: Vec::new(),
+        }
+    }
 }use std::io;
 
 macro_rules! parse_input {
@@ -136,43 +213,4 @@ pub fn read_turn(rows: i32) -> (Dimension, Vec<Vec<char>>, Dimension) {
         board.push(row);
     }
     (k, board, initial_position)
-}use std::collections::HashMap;
-
-pub struct Path {
-    pub entries: Vec<Vec<PathEntry>>
-}
-
-pub struct PathEntry {
-    pub pos: Dimension,
-    pub value: char,
-    pub is_wall: bool,
-
-    pub directions: HashMap<String, PathEntry>
-}
-
-impl Path {
-    pub fn new(dimensions: Dimension) -> Self {
-        let mut entries = Vec::new();
-        for y in 0..dimensions.y {
-            entries.push((0..dimensions.x).map(|x| {
-                PathEntry { pos: Dimension { x, y }, value: '?', is_wall: true, directions: HashMap::default()}
-            }).collect::<Vec<PathEntry>>())
-        }
-        for y in 0..dimensions.y {
-            for x in 0..dimensions.x {
-                let mut directions: Vec<(String, &PathEntry)> = Vec::new();
-                match y {
-                    y if y > 0 => directions.push((String::from("LEFT"), &entries[y-1][x])),
-                    y if y < dimensions.y => directions.push((String::from("RIGHT"), &entries[y+1][x])),
-                    _ => {}
-                }
-                match x {
-                    x if x > 0 => directions.push((String::from("TOP"), &entries[y][x-1])),
-                    x if x < dimensions.x => directions.push((String::from("BOTTOM"), &entries[y][x+1])),
-                    _ => {}
-                }
-            }
-        }
-        Path { entries }
-    }
 }

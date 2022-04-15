@@ -5,7 +5,7 @@ use crate::structures::{Config};
 mod structures;
 mod input;
 mod game;
-mod path;
+mod board;
 
 
 fn main() {
