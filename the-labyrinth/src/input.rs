@@ -1,6 +1,6 @@
 use std::io;
-use crate::{Config, Position};
-use crate::game::Turn;
+use crate::{Config};
+use crate::structures::Dimension;
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
@@ -20,25 +20,21 @@ pub fn read_config() -> Config {
     }
 }
 
-pub fn read_turn(rows: i32) -> Turn {
+pub fn read_turn(rows: i32) -> (Dimension, Vec<Vec<char>>, Dimension) {
     let mut input_line = String::new();
     io::stdin().read_line(&mut input_line).unwrap();
     let inputs = input_line.split(" ").collect::<Vec<_>>();
-    let k = Position { x: parse_input!(inputs[0], i32), y: parse_input!(inputs[1], i32) };
+    let k = Dimension { y: parse_input!(inputs[0], i32) as usize, x: parse_input!(inputs[1], i32) as usize };
     let mut board = Vec::new();
-    let mut initial_position = Position::default();
+    let mut initial_position = Dimension::default();
     for x in 0..rows as usize {
         let mut input_line = String::new();
         io::stdin().read_line(&mut input_line).unwrap();
         let row = input_line.trim().chars().collect::<Vec<_>>();
         if let Some(y) = row.iter().position(|&r| r == 'T') {
-            initial_position = Position { x: x as i32, y: y as i32 };
+            initial_position = Dimension { y, x };
         }
         board.push(row);
     }
-    Turn {
-        k,
-        board,
-        initial_position,
-    }
+    (k, board, initial_position)
 }

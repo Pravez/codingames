@@ -1,19 +1,21 @@
+use crate::game::Game;
 use crate::input::{read_config, read_turn};
-use crate::structures::{Config, Position};
+use crate::structures::{Config};
 
 mod structures;
 mod input;
 mod game;
+mod path;
 
 
 fn main() {
-    let config = read_config();
+    let mut game = Game::new(read_config());
 
     loop {
-        let turn = read_turn(config.rows);
+        game.update(read_turn(game.config.rows));
         // Write an action using println!("message...");
         // To debug: eprintln!("Debug message...");
 
-        println!("{}", turn.play()); // Rick's next move (UP DOWN LEFT or RIGHT).
+        println!("{}", game.play()); // Rick's next move (UP DOWN LEFT or RIGHT).
     }
 }
