@@ -6,17 +6,17 @@
     <option name="exitCodeBehavior" value="ERROR" />
     <option name="fileExtension" value="rs" />
     <option name="immediateSync" value="true" />
-    <option name="name" value="Rust" />
+    <option name="name" value="The Labyrinth - Rust" />
     <option name="output" value="" />
     <option name="outputFilters">
       <array />
     </option>
     <option name="outputFromStdout" value="false" />
-    <option name="program" value="$PROJECT_DIR$/merge.sh" />
+    <option name="program" value="$PROJECT_DIR$/the-labyrinth/merge.sh" />
     <option name="runOnExternalChanges" value="true" />
     <option name="scopeName" value="Project Files" />
     <option name="trackOnlyRoot" value="false" />
-    <option name="workingDir" value="$PROJECT_DIR$" />
+    <option name="workingDir" value="$PROJECT_DIR$/the-labyrinth" />
     <envs />
   </TaskOptions>
 </TaskOptions>
