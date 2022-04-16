@@ -58,6 +58,14 @@ impl Board {
             }
         }
     }
+
+    pub fn get(&self, x: usize, y: usize) -> char {
+        return self.cells[x][y].value;
+    }
+
+    pub fn get_cell(&self, x: usize, y: usize) -> &Cell {
+        return &self.cells[x][y];
+    }
 }
 
 impl Cell {

@@ -17,12 +17,18 @@ impl Game {
 
     pub fn new(config: Config) -> Self {
         let initial_position = Default::default();
-        Game { config, k: Default::default(), board: Board::new(config.rows.clone() as usize, config.cols.clone() as usize), initial_position, path: Path::new(&initial_position), console_found: false }
+        Game {
+            config,
+            k: Default::default(),
+            board: Board::new(config.rows.clone() as usize, config.cols.clone() as usize),
+            initial_position,
+            path: Path::new(&initial_position), console_found: false
+        }
     }
 
     pub fn update(&mut self, (k, board, initial_position): (Dimension, Vec<Vec<char>>, Dimension)) {
         self.k = k;
-        self.board = board;
+        self.board.update(&board);
         self.initial_position = initial_position;
     }
 
@@ -31,6 +37,14 @@ impl Game {
             None => Game::POSSIBILITIES.iter().find(|(&x, &y)| self.can_do(x, y)).map(|(&x, &y)| position_to_direction(x, y).unwrap()),
             Some(it) => it
         }
+    }
+
+    fn record(&self, selected_move: String) {
+
+    }
+
+    fn try_move(&self) -> String {
+        return String::from("");
     }
 
     fn move_to_console(&mut self) -> Option<String> {
@@ -51,7 +65,7 @@ impl Game {
     fn relative_access(&self, x: i32, y: i32) -> char {
         let (cx, cy) = (self.k.x as i32 + x, self.k.y as i32 + y);
         assert!(x < self.config.cols && y < self.config.rows);
-        return self.board[cy as usize][cx as usize];
+        return self.board.get(cy as usize, cx as usize);
     }
 
     fn can_do(&self, x: i32, y: i32) -> bool {
