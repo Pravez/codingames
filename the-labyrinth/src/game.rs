@@ -1,6 +1,6 @@
-use crate::board::{Board, Path};
+use crate::board::{Board, Path, PathEntry};
 use crate::Config;
-use crate::structures::{Dimension, position_to_direction};
+use crate::structures::{Dimension, direction_to_position, opposite_from, position_to_direction};
 
 pub struct Game {
     pub config: Config,
@@ -17,12 +17,14 @@ impl Game {
 
     pub fn new(config: Config) -> Self {
         let initial_position = Default::default();
+        let dimensions = Dimension { x: config.cols as usize, y: config.rows as usize };
         Game {
             config,
             k: Default::default(),
-            board: Board::new(config.rows.clone() as usize, config.cols.clone() as usize),
+            board: Board::new(dimensions),
             initial_position,
-            path: Path::new(&initial_position), console_found: false
+            path: Path::new(initial_position),
+            console_found: false,
         }
     }
 
@@ -30,32 +32,46 @@ impl Game {
         self.k = k;
         self.board.update(&board);
         self.initial_position = initial_position;
+        eprintln!("Updated");
     }
 
     pub fn play(&mut self) -> String {
+        eprintln!("Playing");
+        if self.console_found {
+            return self.go_back();
+        }
+
         let action = match self.move_to_console() {
-            None => Game::POSSIBILITIES
-                .iter()
-                .find(|(x, y)| self.can_do(*x, *y))
-                .map(|(x, y)| position_to_direction(*x, *y).unwrap())
-                .unwrap(),
+            None => self.try_move(),
             Some(it) => it
         };
         self.record(&action);
-
-        return action;
+        action
     }
 
-    fn record(&self, selected_move: &String) {
+    fn record(&mut self, selected_move: &String) {
+        let npos = direction_to_position(self.k.x, self.k.y, selected_move);
+        self.path.entries.push(PathEntry {
+            cell: self.board.get_cell(npos.0, npos.1).clone(),
+            direction: selected_move.clone()
+        });
+    }
 
+    fn go_back(&self) -> String {
+        opposite_from(self.path.entries.last().map(|c| &c.direction).unwrap()).unwrap()
     }
 
     fn try_move(&self) -> String {
-        return String::from("");
+        Game::POSSIBILITIES
+            .to_vec()
+            .iter()
+            .find(|(x, y)| self.can_do(*x, *y))
+            .map(|(x, y)| position_to_direction(*x, *y).unwrap())
+            .unwrap()
     }
 
     fn move_to_console(&mut self) -> Option<String> {
-        for (x, y) in Game::POSSIBILITIES {
+        for (x, y) in Game::POSSIBILITIES.to_vec() {
             if self.relative_access(x, y) == 'C' {
                 self.console_found = true;
                 match position_to_direction(x, y) {
@@ -66,23 +82,25 @@ impl Game {
                 }
             }
         }
-        return None;
+        None
     }
 
     fn relative_access(&self, x: i32, y: i32) -> char {
         let (cx, cy) = (self.k.x as i32 + x, self.k.y as i32 + y);
         assert!(x < self.config.cols && y < self.config.rows);
-        return self.board.get(cy as usize, cx as usize);
+        self.board.get(cy as usize, cx as usize)
     }
 
     fn can_do(&self, x: i32, y: i32) -> bool {
-        match self.relative_access(x, y) {
+        let possible = match self.relative_access(x, y) {
             '#' => false,
             '.' => true,
             'T' => true,
             'C' => true,
             '?' => false,
             _ => false
-        }
+        };
+        let dejavu = self.path.exists(x as usize, y as usize);
+        possible && dejavu
     }
 }

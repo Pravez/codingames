@@ -36,5 +36,6 @@ pub fn read_turn(rows: i32) -> (Dimension, Vec<Vec<char>>, Dimension) {
         }
         board.push(row);
     }
+    eprintln!("Parsed");
     (k, board, initial_position)
 }
