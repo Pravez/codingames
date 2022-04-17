@@ -32,14 +32,21 @@ impl Game {
         self.initial_position = initial_position;
     }
 
-    pub fn play(&self) -> String {
-        match self.move_to_console() {
-            None => Game::POSSIBILITIES.iter().find(|(&x, &y)| self.can_do(x, y)).map(|(&x, &y)| position_to_direction(x, y).unwrap()),
+    pub fn play(&mut self) -> String {
+        let action = match self.move_to_console() {
+            None => Game::POSSIBILITIES
+                .iter()
+                .find(|(x, y)| self.can_do(*x, *y))
+                .map(|(x, y)| position_to_direction(*x, *y).unwrap())
+                .unwrap(),
             Some(it) => it
-        }
+        };
+        self.record(&action);
+
+        return action;
     }
 
-    fn record(&self, selected_move: String) {
+    fn record(&self, selected_move: &String) {
 
     }
 
