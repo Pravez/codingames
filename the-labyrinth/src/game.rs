@@ -1,16 +1,16 @@
-use crate::board::{Board, Path, PathEntry};
-use crate::Config;
+use crate::base::vec::Vec2;
+use crate::input::Config;
 use crate::pathfinding::Pathfinding;
-use crate::structures::{Dimension, direction_to_position, movement_between, opposite_from, position_to_direction};
+use crate::directions::{direction_to_position, movement_between, opposite_from, position_to_direction};
 
 pub struct Game {
     pub config: Config,
     pub console_found: bool,
     pub path: Path,
 
-    pub k: Dimension,
+    pub k: Vec2,
     pub board: Board,
-    pub initial_position: Dimension,
+    pub initial_position: Vec2,
 
     pathfinder: Option<Pathfinding>,
 }
@@ -20,7 +20,7 @@ impl Game {
 
     pub fn new(config: Config) -> Self {
         let initial_position = Default::default();
-        let dimensions = Dimension { x: config.rows as usize, y: config.cols as usize };
+        let dimensions = Vec2 { x: config.rows as usize, y: config.cols as usize };
         Game {
             config,
             k: Default::default(),
@@ -32,7 +32,7 @@ impl Game {
         }
     }
 
-    pub fn update(&mut self, (k, board, initial_position): (Dimension, Vec<Vec<char>>, Dimension)) {
+    pub fn update(&mut self, (k, board, initial_position): (Vec2, Vec<Vec<char>>, Vec2)) {
         self.k = k;
         self.board.update(&board);
         self.initial_position = initial_position;
@@ -81,7 +81,7 @@ impl Game {
         for (x, y) in Game::POSSIBILITIES.to_vec() {
             if self.relative_access(x, y) == 'C' {
                 self.console_found = true;
-                self.pathfinder = Option::from(Pathfinding::new(self.k, self.initial_position, Dimension { x: self.config.rows as usize, y: self.config.cols as usize }));
+                self.pathfinder = Option::from(Pathfinding::new(self.k, self.initial_position, Vec2 { x: self.config.rows as usize, y: self.config.cols as usize }));
                 match position_to_direction(x, y) {
                     Some(r) => return Some(r),
                     _ => {

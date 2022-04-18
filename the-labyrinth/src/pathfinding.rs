@@ -1,39 +1,36 @@
 use std::collections::HashMap;
+use crate::base::generics::AbsDiff;
+use crate::base::queue::{PriorityQueue, PriorityQueueTrait};
 
-use crate::priority_queue::{PriorityQueue, PriorityQueueTrait};
-use crate::structures::Dimension;
-
-macro_rules! dim {
-    ($x:expr, $y:expr) => (Dimension {x: $x, y: $y})
-}
+use crate::base::vec::Vec2;
+use crate::vec2;
 
 pub struct Pathfinding {
-    pub start: Dimension,
-    pub end: Dimension,
+    pub start: Vec2<usize>,
+    pub end: Vec2<usize>,
 
-    cells: Vec<Vec<PCell>>,
+    cells: Vec<Vec<Cell>>,
 }
 
 #[derive(Default, Clone, Eq, PartialEq, Hash)]
-struct PCell {
-    pos: Dimension,
-
-    neighbours: Vec<Dimension>,
+struct Cell {
+    pos: Vec2<usize>,
+    neighbours: Vec<Vec2<usize>>,
 }
 
-impl PCell {
-    fn new(pos: Dimension) -> Self {
-        PCell { pos, neighbours: vec![] }
+impl Cell {
+    fn new(pos: Vec2<usize>) -> Self {
+        Cell { pos, neighbours: vec![] }
     }
 }
 
 impl Pathfinding {
     const NEIGHBOURS: [(i32, i32); 4] = [(0, -1), (-1, 0), (0, 1), (1, 0)];
 
-    pub fn new(start: Dimension, end: Dimension, dimensions: Dimension) -> Self {
+    pub fn new(start: Vec2<usize>, end: Vec2<usize>, dimensions: Vec2<usize>) -> Self {
         let mut cells = vec![];
         for x in 0..dimensions.x {
-            cells.push((0..dimensions.y).map(|y| PCell::new(dim!(x, y))).collect());
+            cells.push((0..dimensions.y).map(|y| Cell::new(vec2!(usize;x, y))).collect());
         }
         Pathfinding {
             start,
@@ -42,17 +39,17 @@ impl Pathfinding {
         }
     }
 
-    pub fn update_start(&mut self, nstart: Dimension) {
+    pub fn update_start(&mut self, nstart: Vec2<usize>) {
         eprintln!("Start is {}, end is {}", self.start, self.end);
         self.start = nstart;
     }
 
-    pub fn populate_cells(&mut self, ncells: &Vec<Vec<char>>) {
+    pub fn populate_cells(&mut self, ncells: &Vec<Vec<bool>>) {
         for x in 0..self.cells.len() {
             for y in 0..self.cells[x].len() {
                 match ncells[x][y] {
-                    '#'|'?' => continue,
-                    _ => {}
+                    false => continue,
+                    true => {}
                 }
                 self.cells[x][y].neighbours.clear();
                 Pathfinding::NEIGHBOURS
@@ -63,21 +60,20 @@ impl Pathfinding {
                     .into_iter()
                     .for_each(|(nx, ny)| {
                         match ncells[nx][ny] {
-                            '.' | 'T' | 'C' => self.cells[x][y].neighbours.push(dim!(nx, ny)),
-                            _ => {}
+                            true => self.cells[x][y].neighbours.push(vec2!(usize;nx, ny)),
+                            false => {}
                         }
                     });
             }
         }
     }
 
-    pub fn next_move(&self) -> Dimension {
+    pub fn find_path(&self) -> Vec<Vec2<usize>> {
         let mut frontier = PriorityQueue::new();
         frontier.insert(self.start, 0);
 
         let mut came_from = HashMap::new();
         let mut cost_so_far = HashMap::new();
-        let mut to = HashMap::new();
         cost_so_far.insert(self.start, 0);
 
         while !frontier.is_empty() {
@@ -95,26 +91,24 @@ impl Pathfinding {
                     let priority = new_cost + Pathfinding::heuristic(self.end, next.clone());
                     frontier.insert(next.clone(), priority as u8);
                     came_from.insert(*next, current);
-                    to.insert(current, *next);
                 }
             }
         }
 
         let mut current = self.end;
         let mut previous = self.end;
+        let mut path: Vec<Vec2<usize>> = Vec::new();
         while current != self.start {
+            path.add(current);
             previous = current;
             current = came_from[&current];
         }
-        came_from.iter().for_each(|(k, v)| eprintln!("{} -> {}", k, v));
-        eprintln!("k {}, v {}", &self.start, to[&self.start]);
+        path.reverse();
 
-        return previous;
+        return path;
     }
 
-    fn heuristic(a: Dimension, b: Dimension) -> usize {
-        let dx = (a.x as i32 - b.x as i32).abs();
-        let dy = (a.y as i32 - b.y as i32).abs();
-        (dx + dy) as usize
+    fn heuristic(a: Vec2<usize>, b: Vec2<usize>) -> usize {
+        a.abs_diff(b).components_sum()
     }
 }

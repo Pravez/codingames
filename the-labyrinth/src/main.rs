@@ -1,13 +1,11 @@
 use crate::game::Game;
 use crate::input::{read_config, read_turn};
-use crate::structures::Config;
 
-mod structures;
+mod directions;
 mod input;
 mod game;
-mod board;
+mod base;
 mod pathfinding;
-mod priority_queue;
 
 
 fn main() {

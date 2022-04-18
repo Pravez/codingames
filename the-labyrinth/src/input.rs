@@ -1,9 +1,14 @@
 use std::io;
-use crate::{Config};
-use crate::structures::Dimension;
+use crate::base::vec::Vec2;
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
+}
+
+pub struct Config {
+    pub rows: i32,
+    pub cols: i32,
+    pub alarm: i32,
 }
 
 pub fn read_config() -> Config {
@@ -20,20 +25,20 @@ pub fn read_config() -> Config {
     }
 }
 
-pub fn read_turn(rows: i32) -> (Dimension, Vec<Vec<char>>, Dimension) {
+pub fn read_turn(rows: i32) -> (Vec2<usize>, Vec<Vec<char>>, Vec2<usize>) {
     eprintln!("Parsing ...");
     let mut input_line = String::new();
     io::stdin().read_line(&mut input_line).unwrap();
     let inputs = input_line.split(" ").collect::<Vec<_>>();
-    let k = Dimension { x: parse_input!(inputs[0], i32) as usize, y: parse_input!(inputs[1], i32) as usize };
+    let k = Vec2 { x: parse_input!(inputs[0], i32) as usize, y: parse_input!(inputs[1], i32) as usize };
     let mut board = Vec::new();
-    let mut initial_position = Dimension::default();
+    let mut initial_position = Vec2::default();
     for x in 0..rows as usize {
         let mut input_line = String::new();
         io::stdin().read_line(&mut input_line).unwrap();
         let row = input_line.trim().chars().collect::<Vec<_>>();
         if let Some(y) = row.iter().position(|&r| r == 'T') {
-            initial_position = Dimension { x, y };
+            initial_position = Vec2 { x, y };
         }
         board.push(row);
     }
