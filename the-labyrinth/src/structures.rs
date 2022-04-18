@@ -1,3 +1,7 @@
+
+use std::fmt::{Display, Formatter};
+use std::ops::{Add, Sub};
+
 #[derive(Default)]
 pub struct Position {
     pub x: i32,
@@ -10,10 +14,34 @@ pub struct Config {
     pub alarm: i32,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct Dimension {
     pub x: usize,
     pub y: usize,
+}
+
+impl Display for Dimension {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl Sub for Dimension {
+    type Output = (i32, i32);
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        (self.x as i32 - rhs.x as i32, self.y as i32 - rhs.y as i32)
+    }
+}
+
+impl Dimension {
+    pub fn diff(self, rhs: Self) -> usize {
+        self.x - rhs.x + self.y - rhs.y
+    }
+
+    pub fn sum(self, rhs: Self) -> usize {
+        self.x + rhs.x + self.y + rhs.y
+    }
 }
 
 pub fn position_to_direction(x: i32, y: i32) -> Option<String> {
@@ -44,4 +72,9 @@ pub fn opposite_from(direction: &String) -> Option<String> {
         "DOWN" => Some("UP"),
         _ => None,
     }.map(|r| String::from(r))
+}
+
+pub fn movement_between(first: Dimension, second: Dimension) -> Option<String> {
+    let sub = first - second;
+    position_to_direction(sub.0, sub.1)
 }

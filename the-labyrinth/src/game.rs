@@ -1,6 +1,7 @@
 use crate::board::{Board, Path, PathEntry};
 use crate::Config;
-use crate::structures::{Dimension, direction_to_position, opposite_from, position_to_direction};
+use crate::pathfinding::Pathfinding;
+use crate::structures::{Dimension, direction_to_position, movement_between, opposite_from, position_to_direction};
 
 pub struct Game {
     pub config: Config,
@@ -10,6 +11,8 @@ pub struct Game {
     pub k: Dimension,
     pub board: Board,
     pub initial_position: Dimension,
+
+    pathfinder: Option<Pathfinding>,
 }
 
 impl Game {
@@ -25,6 +28,7 @@ impl Game {
             initial_position,
             path: Path::new(initial_position),
             console_found: false,
+            pathfinder: None,
         }
     }
 
@@ -32,11 +36,13 @@ impl Game {
         self.k = k;
         self.board.update(&board);
         self.initial_position = initial_position;
-        eprintln!("Updated");
+        self.pathfinder.as_mut().map(|p| {
+            p.update_start(k);
+            p.populate_cells(&board);
+        });
     }
 
     pub fn play(&mut self) -> String {
-        eprintln!("Playing");
         if self.console_found {
             return self.go_back();
         }
@@ -54,12 +60,12 @@ impl Game {
             cell: self.board.get_cell(self.k.x, self.k.y).clone(),
             direction: selected_move.clone(),
         });
-        eprintln!("Added record {}", self.path.entries.last().unwrap());
     }
 
-    fn go_back(&mut self) -> String {
-        let last = self.path.entries.pop().unwrap();
-        opposite_from(&last.direction).unwrap()
+    fn go_back(&self) -> String {
+        let next_move = self.pathfinder.as_ref().map(|p| p.next_move()).unwrap();
+        eprintln!("Next move towards {}", next_move);
+        opposite_from(&movement_between(self.k, next_move).unwrap()).unwrap()
     }
 
     fn try_move(&self) -> String {
@@ -74,8 +80,8 @@ impl Game {
     fn move_to_console(&mut self) -> Option<String> {
         for (x, y) in Game::POSSIBILITIES.to_vec() {
             if self.relative_access(x, y) == 'C' {
-                eprintln!("Found nearby console");
                 self.console_found = true;
+                self.pathfinder = Option::from(Pathfinding::new(self.k, self.initial_position, Dimension { x: self.config.rows as usize, y: self.config.cols as usize }));
                 match position_to_direction(x, y) {
                     Some(r) => return Some(r),
                     _ => {
@@ -95,11 +101,7 @@ impl Game {
 
     fn can_do(&self, x: i32, y: i32) -> bool {
         let possible = match self.relative_access(x, y) {
-            '#' => false,
-            '.' => true,
-            'T' => true,
-            'C' => true,
-            '?' => false,
+            '.' | 'T' | 'C' => true,
             _ => false
         };
         let dejavu = self.path.exists(self.k.x + x as usize, self.k.y + y as usize);

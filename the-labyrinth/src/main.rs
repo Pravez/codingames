@@ -7,6 +7,7 @@ mod input;
 mod game;
 mod board;
 mod pathfinding;
+mod priority_queue;
 
 
 fn main() {

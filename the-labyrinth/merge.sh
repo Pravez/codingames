@@ -1,5 +1,3 @@
 #!/usr/bin/env bash
 
-find ./src -name "*.rs" -exec cat {} + > _main.rs
-gsed -i '/mod */d' _main.rs
-gsed -i '/use crate::*/d' _main.rs
+python3 bundler.py -i src/main.rs -o codingame.rs
