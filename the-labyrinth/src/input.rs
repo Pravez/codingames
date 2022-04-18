@@ -21,10 +21,11 @@ pub fn read_config() -> Config {
 }
 
 pub fn read_turn(rows: i32) -> (Dimension, Vec<Vec<char>>, Dimension) {
+    eprintln!("Parsing ...");
     let mut input_line = String::new();
     io::stdin().read_line(&mut input_line).unwrap();
     let inputs = input_line.split(" ").collect::<Vec<_>>();
-    let k = Dimension { y: parse_input!(inputs[0], i32) as usize, x: parse_input!(inputs[1], i32) as usize };
+    let k = Dimension { x: parse_input!(inputs[0], i32) as usize, y: parse_input!(inputs[1], i32) as usize };
     let mut board = Vec::new();
     let mut initial_position = Dimension::default();
     for x in 0..rows as usize {
@@ -32,10 +33,9 @@ pub fn read_turn(rows: i32) -> (Dimension, Vec<Vec<char>>, Dimension) {
         io::stdin().read_line(&mut input_line).unwrap();
         let row = input_line.trim().chars().collect::<Vec<_>>();
         if let Some(y) = row.iter().position(|&r| r == 'T') {
-            initial_position = Dimension { y, x };
+            initial_position = Dimension { x, y };
         }
         board.push(row);
     }
-    eprintln!("Parsed");
     (k, board, initial_position)
 }

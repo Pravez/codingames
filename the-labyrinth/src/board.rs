@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::structures::{Dimension};
 
 pub struct Board {
@@ -10,8 +11,6 @@ pub struct Cell {
     pub pos: Dimension,
     pub value: char,
     pub is_wall: bool,
-
-    //pub directions: HashMap<String, Cell>,
 }
 
 impl Clone for Cell {
@@ -34,36 +33,27 @@ pub struct PathEntry {
     pub cell: Cell,
 }
 
+impl Display for PathEntry {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} -> ({}, {})", self.direction, self.cell.pos.x, self.cell.pos.y)
+    }
+}
+
 impl Board {
     pub fn new(dims: Dimension) -> Self {
         let mut entries = Vec::new();
-        for y in 0..dims.y {
-            entries.push((0..dims.x).map(|x| {
+        for x in 0..dims.x {
+            entries.push((0..dims.y).map(|y| {
                 Cell { pos: Dimension { x, y }, value: '?', is_wall: true }
             }).collect::<Vec<Cell>>())
         }
-        for y in 0..dims.y {
-            for x in 0..dims.x {
-                let mut directions: Vec<(String, &Cell)> = Vec::new();
-                match y {
-                    y if y > 0 => directions.push((String::from("LEFT"), &entries[y - 1][x])),
-                    y if y < dims.y - 1 => directions.push((String::from("RIGHT"), &entries[y + 1][x])),
-                    _ => {}
-                }
-                match x {
-                    x if x > 0 => directions.push((String::from("TOP"), &entries[y][x - 1])),
-                    x if x < dims.x - 1 => directions.push((String::from("BOTTOM"), &entries[y][x + 1])),
-                    _ => {}
-                }
-            }
-        }
-        Board { rows: dims.y, cols: dims.x, cells: entries }
+        Board { rows: dims.x, cols: dims.y, cells: entries }
     }
 
     pub fn update(&mut self, board: &Vec<Vec<char>>) {
-        for y in 0..self.rows {
-            for x in 0..self.cols {
-                self.cells[y][x].update(board[y][x]);
+        for x in 0..self.rows {
+            for y in 0..self.cols {
+                self.cells[x][y].update(board[x][y]);
             }
         }
     }
@@ -93,6 +83,7 @@ impl Path {
     }
 
     pub fn exists(&self, x: usize, y: usize) -> bool {
+        eprintln!("Checking ({}, {})...", x, y);
         for cell in self.entries.as_slice() {
             if cell.cell.pos.x == x && cell.cell.pos.y == y {
                 return true

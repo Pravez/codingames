@@ -13,11 +13,11 @@ pub struct Game {
 }
 
 impl Game {
-    const POSSIBILITIES: [(i32, i32); 4] = [(-1, 0), (0, -1), (1, 0), (0, 1)];
+    const POSSIBILITIES: [(i32, i32); 4] = [(0, -1), (-1, 0), (0, 1), (1, 0)];
 
     pub fn new(config: Config) -> Self {
         let initial_position = Default::default();
-        let dimensions = Dimension { x: config.cols as usize, y: config.rows as usize };
+        let dimensions = Dimension { x: config.rows as usize, y: config.cols as usize };
         Game {
             config,
             k: Default::default(),
@@ -50,15 +50,16 @@ impl Game {
     }
 
     fn record(&mut self, selected_move: &String) {
-        let npos = direction_to_position(self.k.x, self.k.y, selected_move);
         self.path.entries.push(PathEntry {
-            cell: self.board.get_cell(npos.0, npos.1).clone(),
-            direction: selected_move.clone()
+            cell: self.board.get_cell(self.k.x, self.k.y).clone(),
+            direction: selected_move.clone(),
         });
+        eprintln!("Added record {}", self.path.entries.last().unwrap());
     }
 
-    fn go_back(&self) -> String {
-        opposite_from(self.path.entries.last().map(|c| &c.direction).unwrap()).unwrap()
+    fn go_back(&mut self) -> String {
+        let last = self.path.entries.pop().unwrap();
+        opposite_from(&last.direction).unwrap()
     }
 
     fn try_move(&self) -> String {
@@ -73,6 +74,7 @@ impl Game {
     fn move_to_console(&mut self) -> Option<String> {
         for (x, y) in Game::POSSIBILITIES.to_vec() {
             if self.relative_access(x, y) == 'C' {
+                eprintln!("Found nearby console");
                 self.console_found = true;
                 match position_to_direction(x, y) {
                     Some(r) => return Some(r),
@@ -87,8 +89,8 @@ impl Game {
 
     fn relative_access(&self, x: i32, y: i32) -> char {
         let (cx, cy) = (self.k.x as i32 + x, self.k.y as i32 + y);
-        assert!(x < self.config.cols && y < self.config.rows);
-        self.board.get(cy as usize, cx as usize)
+        assert!(x < self.config.rows && y < self.config.cols);
+        self.board.get(cx as usize, cy as usize)
     }
 
     fn can_do(&self, x: i32, y: i32) -> bool {
@@ -100,7 +102,8 @@ impl Game {
             '?' => false,
             _ => false
         };
-        let dejavu = self.path.exists(x as usize, y as usize);
-        possible && dejavu
+        let dejavu = self.path.exists(self.k.x + x as usize, self.k.y + y as usize);
+        eprintln!("({}, {}) : {}, dejavu {}", x, y, possible, dejavu);
+        possible && !dejavu
     }
 }
