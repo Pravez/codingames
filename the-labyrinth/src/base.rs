@@ -12,7 +12,7 @@ pub mod generics {
 
     #[macro_export]
     macro_rules! debug_display {
-    ($g:ty;$t:ident) => {
+    ($g:ty, $t:ident) => {
         impl std::fmt::Display for $t<$g> {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                     write!(f, "{:?}", self)
@@ -23,12 +23,12 @@ pub mod generics {
 
     #[macro_export]
     macro_rules! impl_add {
-    ($g:ty;$t:ident) => {
+    ($g:ty, $t:ident) => {
         impl std::ops::Add for $t<$g> {
                 type Output = $t<$g>;
 
                 fn add(self, rhs: Self) -> Self::Output {
-                    vec2!($g ; self.x + rhs.x, self.y + rhs.y)
+                    vec2!($g, self.x + rhs.x, self.y + rhs.y)
                 }
             }
         }
@@ -36,12 +36,12 @@ pub mod generics {
 
     #[macro_export]
     macro_rules! impl_sub {
-    ($g:ty;$t:ident) => {
+    ($g:ty, $t:ident) => {
         impl std::ops::Sub for $t<$g> {
                 type Output = $t<$g>;
 
                 fn sub(self, rhs: Self) -> Self::Output {
-                    vec2!($g ; self.x - rhs.x, self.y - rhs.y)
+                    vec2!($g, self.x - rhs.x, self.y - rhs.y)
                 }
             }
         }
@@ -49,12 +49,12 @@ pub mod generics {
 
     #[macro_export]
     macro_rules! impl_abs_sub {
-    ($g:ty;$t:ident) => {
+    ($g:ty, $t:ident) => {
         impl AbsDiff<$g> for $t<$g> {
                 type Output = $t<$g>;
 
                 fn abs_diff(self, rhs: Self) -> Self::Output {
-                    vec2!($g ; (self.x - rhs.x).abs(), (self.y - rhs.y).abs())
+                    vec2!($g, (self.x - rhs.x).abs(), (self.y - rhs.y).abs())
                 }
 
                 fn components_sum(self) -> $g {
@@ -69,30 +69,32 @@ pub mod vec {
     use crate::{debug_display, impl_abs_sub, impl_add, impl_sub};
     use crate::base::generics::{AbsDiff, NumericOps};
 
-    #[macro_export]
-    macro_rules! vec2 {
-        ($t: ty; $x:expr, $y:expr, ) => (Vec2<$t> {x: $x, y: $y})
-    }
-
-
-
     #[derive(Default, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
     pub struct Vec2<T> {
         pub x: T,
         pub y: T,
     }
 
+    #[macro_export]
+    macro_rules! vec2 {
+        ($x:expr, $y:expr) => ($crate::Vec2 { x: $x, y: $y })
+    }
+
+    Vec2 {x: 1, y: 1}
+
+    vec2!(1, 2);
+
     impl NumericOps<i32> for Vec2<i32> {}
-    debug_display!(i32;Vec2);
-    impl_add!(i32;Vec2);
-    impl_sub!(i32;Vec2);
-    impl_abs_sub!(i32;Vec2);
+    debug_display!(i32, Vec2);
+    impl_add!(i32, Vec2);
+    impl_sub!(i32, Vec2);
+    impl_abs_sub!(i32, Vec2);
 
     impl NumericOps<usize> for Vec2<usize> {}
-    debug_display!(usize;Vec2);
-    impl_add!(usize;Vec2);
-    impl_sub!(usize;Vec2);
-    impl_abs_sub!(usize;Vec2);
+    debug_display!(usize, Vec2);
+    impl_add!(usize, Vec2);
+    impl_sub!(usize, Vec2);
+    impl_abs_sub!(usize, Vec2);
 }
 
 pub mod grid {
@@ -117,7 +119,7 @@ pub mod grid {
             let cells = (0..dimensions.x)
                 .map(|_|
                     (0..dimensions.y)
-                        .map(|_| Cell { pos: vec2!(usize;x,y), value: Default::default() })
+                        .map(|_| Cell { pos: vec2!(usize, x,y), value: Default::default() })
                         .collect())
                 .collect();
             Grid { dimensions, cells }

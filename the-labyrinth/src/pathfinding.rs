@@ -1,7 +1,7 @@
 use std::collections::HashMap;
+
 use crate::base::generics::AbsDiff;
 use crate::base::queue::{PriorityQueue, PriorityQueueTrait};
-
 use crate::base::vec::Vec2;
 use crate::vec2;
 
@@ -30,7 +30,7 @@ impl Pathfinding {
     pub fn new(start: Vec2<usize>, end: Vec2<usize>, dimensions: Vec2<usize>) -> Self {
         let mut cells = vec![];
         for x in 0..dimensions.x {
-            cells.push((0..dimensions.y).map(|y| Cell::new(vec2!(usize;x, y))).collect());
+            cells.push((0..dimensions.y).map(|y| Cell::new(vec2!(usize, x, y))).collect());
         }
         Pathfinding {
             start,
@@ -60,7 +60,7 @@ impl Pathfinding {
                     .into_iter()
                     .for_each(|(nx, ny)| {
                         match ncells[nx][ny] {
-                            true => self.cells[x][y].neighbours.push(vec2!(usize;nx, ny)),
+                            true => self.cells[x][y].neighbours.push(vec2!(usize, nx, ny)),
                             false => {}
                         }
                     });
