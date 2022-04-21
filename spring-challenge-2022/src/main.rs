@@ -1,20 +1,19 @@
-use crate::base::vec::Vec2;
-use crate::game::Game;
-use crate::input::{init, parse_turn};
+use lib::input::{init, parse_turn};
 
-mod base;
-mod input;
-mod structures;
+use crate::game::Game;
+use crate::lib::base::vec::Vec2;
+
 mod game;
-mod constants;
+mod lib;
+mod unit;
 
 fn main() {
     let config = init();
-    let game: Game = Game { base: config.base };
+    let mut game = Game::new(&config);
     loop {
-        let turn = parse_turn();
-        for hero in 0..config.heroes as usize {
-            println!("{}", game.play(hero, &turn));
+        game.update(&parse_turn());
+        for hero in 0..config.heroes {
+            println!("{}", game.play(&hero));
         }
     }
 }

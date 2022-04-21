@@ -1,14 +1,18 @@
 pub mod generics {
     use std::ops::{Add, Sub};
 
-    pub trait AbsDiff<T: Add + Sub> {
+    pub trait VecOps<T: Add + Sub> {
         type Output;
 
-        fn abs_diff(self, rhs: Self) -> Self::Output;
-        fn components_sum(self) -> T;
+        fn diff(&self, rhs: Self) -> Self::Output;
+        fn components_sum(&self) -> T;
+        fn dot(&self, rhs: Self) -> T;
+        fn len(&self) -> f32;
+        fn min(&self, rhs: Self) -> Self::Output;
+        fn max(&self, rhs: Self) -> Self::Output;
     }
 
-    pub trait NumericOps<T: Add + Sub>: Sized + Sub + Add + AbsDiff<T> {}
+    pub trait NumericOps<T: Add + Sub>: Sized + Sub + Add + VecOps<T> + Default + {}
 
     #[macro_export]
     macro_rules! debug_display {
@@ -48,17 +52,35 @@ pub mod generics {
     }
 
     #[macro_export]
-    macro_rules! impl_abs_sub {
+    macro_rules! impl_vec_ops {
     ($g:ty;$t:ident) => {
-        impl AbsDiff<$g> for $t<$g> {
+        impl VecOps<$g> for $t<$g> {
                 type Output = $t<$g>;
 
-                fn abs_diff(self, rhs: Self) -> Self::Output {
-                    vec2!((self.x - rhs.x).abs(), (self.y - rhs.y).abs())
+                fn diff(&self, rhs: Self) -> Self::Output {
+                    vec2!(self.x - rhs.x, self.y - rhs.y)
                 }
 
-                fn components_sum(self) -> $g {
+                fn components_sum(&self) -> $g {
                     self.x + self.y
+                }
+
+                fn dot(&self, rhs: Self) -> $g {
+                    self.x * rhs.x + self.y * rhs.y
+                }
+
+                fn len(&self) -> f32 {
+                    ((self.x.pow(2) + self.y.pow(2)) as f32).sqrt()
+                }
+
+                fn min(&self, rhs: Self) -> Self::Output {
+                    vec2!( if self.x < rhs.x { self.x } else { rhs.x }
+                    , if self.y < rhs.y { self.y } else { rhs.y })
+                }
+
+                fn max(&self, rhs: Self) -> Self::Output {
+                    vec2!( if self.x > rhs.x { self.x } else { rhs.x }
+                    , if self.y > rhs.y { self.y } else { rhs.y })
                 }
             }
         }
@@ -68,12 +90,13 @@ pub mod generics {
 pub mod vec {
     use std::ops::{Add, Sub};
 
-    use crate::{debug_display, impl_abs_sub, impl_add, impl_sub};
-    use crate::base::generics::{AbsDiff, NumericOps};
+    use crate::{debug_display, impl_add, impl_sub, impl_vec_ops};
+    use crate::lib::base::generics::{NumericOps, VecOps};
 
     #[macro_export]
     macro_rules! vec2 {
-        ($x:expr, $y:expr) => (Vec2::new($x, $y))
+        () => (Vec2::new(Default::default(), Default::default()));
+        ($x:expr, $y:expr) => (Vec2::new($x, $y));
     }
 
 
@@ -94,29 +117,23 @@ pub mod vec {
     debug_display!(i32;Vec2);
     impl_add!(i32;Vec2);
     impl_sub!(i32;Vec2);
-    impl_abs_sub!(i32;Vec2);
-
-
-    impl AbsDiff<usize> for Vec2<usize> {
-        type Output = Vec2<usize>;
-
-        fn abs_diff(self, rhs: Self) -> Self::Output {
-            vec2!(self.x-rhs.x, self.y-rhs.y)
-        }
-
-        fn components_sum(self) -> usize {
-            self.x + self.y
-        }
-    }
+    impl_vec_ops!(i32;Vec2);
 
     impl NumericOps<usize> for Vec2<usize> {}
     debug_display!(usize;Vec2);
     impl_add!(usize;Vec2);
     impl_sub!(usize;Vec2);
+    impl_vec_ops!(usize;Vec2);
+
+    impl NumericOps<u32> for Vec2<u32> {}
+    debug_display!(u32;Vec2);
+    impl_add!(u32;Vec2);
+    impl_sub!(u32;Vec2);
+    impl_vec_ops!(u32;Vec2);
 }
 
 pub mod grid {
-    use crate::base::vec::Vec2;
+    use crate::lib::base::vec::Vec2;
     use crate::vec2;
 
     pub trait GridContent: Clone + Copy + Default {}
@@ -203,5 +220,16 @@ pub mod queue {
         fn is_empty(&self) -> bool {
             self.0.is_empty()
         }
+    }
+}
+
+pub mod alg {
+    use crate::{Vec2, vec2};
+
+    pub fn place_on_circle_at(circle_center: Vec2<i32>, circle_radius: f32, radians: f32) -> Vec2<i32> {
+        return vec2!(
+            (circle_radius * radians.cos() + circle_center.x as f32) as i32,
+            (circle_radius * radians.cos() + circle_center.y as f32) as i32
+        )
     }
 }

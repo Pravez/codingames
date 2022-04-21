@@ -1,21 +1,21 @@
 use std::io;
 
 use crate::{Vec2, vec2};
-use crate::structures::UnitType;
+use crate::lib::structures::UnitType;
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
 }
 
 pub struct Config {
-    pub base: Vec2<usize>,
+    pub base: Vec2<u32>,
     pub heroes: i32,
 }
 
 pub struct Turn {
     pub me: Player,
     pub opponent: Player,
-    pub units: Vec<Unit>,
+    pub units: Vec<InputUnit>,
 }
 
 #[derive(Copy, Clone)]
@@ -24,11 +24,16 @@ pub struct Player {
     pub mana: i32,
 }
 
-pub struct Unit {
+pub struct InputUnit {
     pub id: i32,
     pub unit_type: UnitType,
-    pub position: Vec2<usize>,
-
+    pub position: Vec2<u32>,
+    pub health: i32,
+    pub is_controlled: bool,
+    pub shield_life: i32,
+    pub trajectory: Vec2<i32>,
+    pub near_base: bool,
+    pub threat_for: i32,
 }
 
 pub fn init() -> Config {
@@ -41,7 +46,7 @@ pub fn init() -> Config {
     io::stdin().read_line(&mut input_line).unwrap();
     let heroes_per_player = parse_input!(input_line, i32); // Always 3
     Config {
-        base: vec2!(base_x as usize, base_y as usize),
+        base: vec2!(base_x as u32, base_y as u32),
         heroes: heroes_per_player,
     }
 }
@@ -73,10 +78,16 @@ pub fn parse_turn() -> Turn {
         let vy = parse_input!(inputs[8], i32);
         let near_base = parse_input!(inputs[9], i32); // 0=monster with no target yet, 1=monster targeting a base
         let threat_for = parse_input!(inputs[10], i32); // Given this monster's trajectory, is it a threat to 1=your base, 2=your opponent's base, 0=neither
-        Unit {
+        InputUnit {
             id,
-            unit_type: UnitType::HERO,
-            position: vec2!(x as usize, y as usize),
+            unit_type: UnitType::from_int(unit_type),
+            position: vec2!(x as u32, y as u32),
+            health,
+            is_controlled: is_controlled == 1,
+            shield_life,
+            trajectory: vec2!(vx, vy),
+            near_base: near_base == 1,
+            threat_for
         }
     }).collect();
 
