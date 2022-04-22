@@ -4,8 +4,12 @@ from typing import Tuple, Optional, List
 
 import numpy as np
 
+SIZE_X = 17630
+SIZE_Y = 9000
+
 base_x, base_y = [int(i) for i in input().split()]
 base_pos = (base_x, base_y)
+opponent_pos = (abs(base_x - SIZE_X), abs(base_y - SIZE_Y))
 heroes_per_player = int(input())  # Always 3
 
 
@@ -60,45 +64,20 @@ class Monster(Unit):
             self.speed)
 
 
-class Hero(Unit):
+class HeroBase(Unit):
     IDLE_POS = 2500
     MIN_DEF_RANGE = 6500
     pursuing: Optional[Monster]
     dist_to_base: float
-    defender: bool
 
-    def __init__(self, _id, position, _health, defender=False):
+    def __init__(self, _id, position, _health):
         super().__init__(_id, position, _health)
         self.dist_to_base = 0
         self.pursuing = None
-        self.defender = defender
-
-    def set_defender(self, defender: bool):
-        self.defender = defender
 
     def update(self, position):
         self.position = position
         self.dist_to_base = self.dist_to(base_pos)
-
-    def update_threats(self, _threats: List[Monster]):
-        direct_threats = [t for t in _threats if t.pursued_by is None or (t.near_base and t.health >= 9)]
-        if self.defender:
-            direct_threats = [t for t in direct_threats if t.dist_to(base_pos) < self.MIN_DEF_RANGE]
-
-        biggest_threat = direct_threats[0] if len(direct_threats) > 0 \
-            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
-            else None
-
-        if self.is_not_pursuing_or_should_stop(biggest_threat):
-            self.pursue(biggest_threat) if biggest_threat is not None else self.stop_pursuing()
-
-    def is_not_pursuing_or_should_stop(self, threat: Monster) -> bool:
-        if self.pursuing is None: return True
-        dist_to_pursuing = self.dist_to(self.pursuing.position)
-        dist_to_other = self.dist_to(threat.position)
-        other_is_pursued = len(threat.pursued_by) > 0
-        mine_is_pursued_by_others = len(threat.pursued_by) > 1
-        return dist_to_pursuing > dist_to_other or (not other_is_pursued and mine_is_pursued_by_others)
 
     def pursue(self, monster: Monster):
         if self.pursuing is not None:
@@ -108,8 +87,11 @@ class Hero(Unit):
 
     def stop_pursuing(self):
         if self.pursuing is not None:
-            self.pursuing.pursued_by = self.pursuing.pursued_by.remove(self)
+            self.pursuing.pursued_by.remove(self)
         self.pursuing = None
+
+    def update_threats(self, _threats: List[Monster]):
+        raise NotImplementedError()
 
     def next_move(self) -> str:
         if self.pursuing is not None:
@@ -118,8 +100,64 @@ class Hero(Unit):
             return f"MOVE {abs(base_x - self.IDLE_POS)} {abs(base_y - self.IDLE_POS)}"
 
 
+class Hero(HeroBase):
+    def __init__(self, _id, position, _health):
+        super().__init__(_id, position, _health)
+
+    def update_threats(self, _threats: List[Monster]):
+        direct_threats = [t for t in _threats if len(t.pursued_by) <= 0]
+
+        biggest_threat = direct_threats[0] if len(direct_threats) > 0 \
+            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
+            else None
+
+        if biggest_threat is not None:
+            if self.pursuing is None:
+                self.pursue(biggest_threat)
+            elif self.should_stop_pursuing(biggest_threat):
+                self.pursue(biggest_threat)
+        else:
+            if self.pursuing is not None:
+                self.stop_pursuing()
+
+    def should_stop_pursuing(self, threat: Monster) -> bool:
+        dist_to_pursuing = self.dist_to(self.pursuing.position)
+        dist_to_other = self.dist_to(threat.position)
+        other_is_pursued = len(threat.pursued_by) > 0
+        mine_is_pursued_by_others = len(threat.pursued_by) > 1
+        return dist_to_pursuing > dist_to_other
+
+
+class Defender(HeroBase):
+    def __init__(self, _id, position, _health):
+        super().__init__(_id, position, _health)
+
+    def update_threats(self, _threats: List[Monster]):
+        direct_threats = [t for t in _threats if len(t.pursued_by) <= 0 and t.dist_to(base_pos) < self.MIN_DEF_RANGE]
+
+        biggest_threat = direct_threats[0] if len(direct_threats) > 0 \
+            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
+            else None
+
+        if biggest_threat is not None:
+            if self.pursuing is None:
+                self.pursue(biggest_threat)
+            elif self.should_stop_pursuing(biggest_threat):
+                self.pursue(biggest_threat)
+        else:
+            if self.pursuing is not None:
+                self.stop_pursuing()
+
+    def should_stop_pursuing(self, threat: Monster) -> bool:
+        dist_to_pursuing = self.dist_to(self.pursuing.position)
+        dist_to_other = self.dist_to(threat.position)
+        other_is_pursued = len(threat.pursued_by) > 0
+        mine_is_pursued_by_others = len(threat.pursued_by) > 1
+        return dist_to_pursuing > dist_to_other
+
+
 def heuristic(threat: Monster) -> float:
-    return threat.dist_to((base_x, base_y)) * 100 - threat.health
+    return threat.dist_to((base_x, base_y))
 
 
 # game loop
@@ -136,7 +174,7 @@ while True:
                                                                                                input().split()]
         if _type == 1:
             if _id not in heroes:
-                heroes[_id] = Hero(_id, (x, y), health, len(heroes) >= 2)
+                heroes[_id] = (Hero if len(heroes) < 2 else Defender)(_id, (x, y), health)
             else:
                 heroes[_id].update((x, y))
         elif _type == 0:
