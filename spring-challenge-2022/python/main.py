@@ -2,8 +2,6 @@ import math
 import sys
 from typing import Tuple, Optional, List
 
-import numpy as np
-
 SIZE_X = 17630
 SIZE_Y = 9000
 
@@ -12,6 +10,11 @@ base_pos = (base_x, base_y)
 opponent_pos = (abs(base_x - SIZE_X), abs(base_y - SIZE_Y))
 heroes_per_player = int(input())  # Always 3
 
+PATROL_POINTS = [((abs(base_x - 6500), abs(base_y - 3000)),
+                  (abs(base_x - 7000), abs(base_y - 1000))),
+                 ((abs(base_x - 4500), abs(base_y - 5000)),
+                  (abs(base_x - 3000), abs(base_y - 6500)))]
+
 
 def hprinterr(hero: int, msg: str):
     print(f"{hero}: {msg}", file=sys.stderr, flush=True)
@@ -19,6 +22,10 @@ def hprinterr(hero: int, msg: str):
 
 def mprinterr(monster: int, msg: str):
     print(f"{monster}: {msg}", file=sys.stderr, flush=True)
+
+
+class Facts:
+    monsters_inside_security: int = 0
 
 
 class Unit:
@@ -40,7 +47,9 @@ class Monster(Unit):
     is_threat: bool
     pursued_by: List[Unit]
     speed: Tuple[int, int]
-    will_hit_in: int
+    current_health: int
+    lasting_health_percent: float
+    will_be_controlled_by: Optional[Unit]
 
     def __init__(self, _id, position, _near_base, is_threat, _health, speed):
         super().__init__(_id, position, _health)
@@ -48,32 +57,44 @@ class Monster(Unit):
         self.is_threat = is_threat
         self.pursued_by = []
         self.speed = speed
+        self.lasting_health_percent = 1
+        self.current_health = self.health
+        self.will_be_controlled_by = None
 
     def update(self, position, _near_base, is_threat, _health, speed):
         self.position = position
-        self.health = _health
+        self.current_health = _health
+        self.lasting_health_percent = self.current_health / self.health
         self.near_base = _near_base
         self.is_threat = is_threat
         self.speed = speed
-        if self.is_threat:
-            self._calculate_time_before_hitting()
-            mprinterr(self._id, f"Will hit in {self.will_hit_in}")
+        self.will_be_controlled_by = None
+        if self.health <= 0:
+            self.dead()
 
-    def _calculate_time_before_hitting(self):
-        self.will_hit_in = np.linalg.norm((base_x - self.position[0], base_y - self.position[1])) / np.linalg.norm(
-            self.speed)
+    def dead(self):
+        for hero in self.pursued_by:
+            hero.pursuing = None
 
 
 class HeroBase(Unit):
     IDLE_POS = 2500
     MIN_DEF_RANGE = 6500
+    MIN_WIND_DIST = 3800.
+    MIN_CUMULATED_HEALTH_TO_CONTROL = 20
+    MAX_MONSTERS_INSIDE_SECURITY = 3
+    MAX_DIST_TO_BASE_TO_CONTROL = 10000
+    MIN_WIND_DIST_AROUND_HERO = 1300
+    MIN_DIST_TO_CONTROL = 2200
     pursuing: Optional[Monster]
     dist_to_base: float
+    current_threats: List[Monster]
 
     def __init__(self, _id, position, _health):
         super().__init__(_id, position, _health)
         self.dist_to_base = 0
         self.pursuing = None
+        self.current_threats = []
 
     def update(self, position):
         self.position = position
@@ -91,25 +112,65 @@ class HeroBase(Unit):
         self.pursuing = None
 
     def update_threats(self, _threats: List[Monster]):
-        raise NotImplementedError()
+        self.current_threats = _threats
+
+    def should_stop_pursuing(self, threat: Monster) -> bool:
+        dist_to_pursuing = self.dist_to(self.pursuing.position)
+        dist_to_other = self.dist_to(threat.position)
+        return abs(dist_to_pursuing - dist_to_other) > 500
+
+    def define_biggest_threat(self, direct_threats: List[Monster], _threats: List[Monster]) -> Optional[Monster]:
+        direct_threats.sort(key=lambda k: k.dist_to(self.position))
+        return direct_threats[0] if len(direct_threats) > 0 \
+            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
+            else None
+
+    def should_wind(self):
+        if mana < 10 or self.dist_to(self.pursuing.position) > self.MIN_WIND_DIST_AROUND_HERO: return False
+        dist_to_base = self.pursuing.dist_to(base_pos)
+        if dist_to_base > self.MIN_WIND_DIST: return False
+        percent_near = 1 - (dist_to_base / self.MIN_WIND_DIST)
+        hprinterr(self._id, f"Near at {percent_near:.2f}%")
+        max_health = (1 - (0.75 * percent_near))
+        hprinterr(self._id, f"Will wind at {max_health:.2f}% (currently {self.pursuing.lasting_health_percent})")
+        return self.pursuing.lasting_health_percent > max_health and mana >= 10
+
+    def should_control(self) -> Optional[Monster]:
+        if Facts.monsters_inside_security >= self.MAX_MONSTERS_INSIDE_SECURITY or mana < 10: return None
+        concerned = [t for t in self.current_threats if
+                     not t.near_base and t.dist_to(base_pos) < self.MAX_DIST_TO_BASE_TO_CONTROL and self.dist_to(
+                         t.position) < self.MIN_DIST_TO_CONTROL]
+        if len(concerned) <= 0 or sum(
+                map(lambda t: t.health, concerned)) < self.MIN_CUMULATED_HEALTH_TO_CONTROL: return None
+        concerned.sort(key=lambda k: k.current_health, reverse=True)
+        mob = concerned[0]
+        mob.will_be_controlled_by = self
+        return mob
 
     def next_move(self) -> str:
+        global mana
         if self.pursuing is not None:
+            if self.should_wind():
+                mana -= 10
+                return f"SPELL WIND {opponent_pos[0]} {opponent_pos[1]}"
             return f"MOVE {self.pursuing.position[0]} {self.pursuing.position[1]}"
         else:
             return f"MOVE {abs(base_x - self.IDLE_POS)} {abs(base_y - self.IDLE_POS)}"
 
 
-class Hero(HeroBase):
-    def __init__(self, _id, position, _health):
+class Patroller(HeroBase):
+    patrol_points: Tuple[Tuple[int, int], Tuple[int, int]]
+    current_point: int
+
+    def __init__(self, _id, position, _health, patrol_points):
         super().__init__(_id, position, _health)
+        self.patrol_points = patrol_points
+        self.current_point = 0
 
     def update_threats(self, _threats: List[Monster]):
+        super(Patroller, self).update_threats(_threats)
         direct_threats = [t for t in _threats if len(t.pursued_by) <= 0]
-
-        biggest_threat = direct_threats[0] if len(direct_threats) > 0 \
-            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
-            else None
+        biggest_threat = self.define_biggest_threat(direct_threats, _threats)
 
         if biggest_threat is not None:
             if self.pursuing is None:
@@ -120,12 +181,23 @@ class Hero(HeroBase):
             if self.pursuing is not None:
                 self.stop_pursuing()
 
-    def should_stop_pursuing(self, threat: Monster) -> bool:
-        dist_to_pursuing = self.dist_to(self.pursuing.position)
-        dist_to_other = self.dist_to(threat.position)
-        other_is_pursued = len(threat.pursued_by) > 0
-        mine_is_pursued_by_others = len(threat.pursued_by) > 1
-        return dist_to_pursuing > dist_to_other
+    def next_move(self) -> str:
+        global mana
+        should_control = self.should_control()
+        if should_control is not None:
+            mana -= 10
+            return f"SPELL CONTROL {should_control._id} {opponent_pos[0]} {opponent_pos[1]}"
+
+        if self.pursuing is not None:
+            if self.should_wind():
+                mana -= 10
+                return f"SPELL WIND {opponent_pos[0]} {opponent_pos[1]}"
+            return f"MOVE {self.pursuing.position[0]} {self.pursuing.position[1]}"
+        else:
+            if self.dist_to(self.patrol_points[self.current_point]) < 100:
+                self.current_point = (self.current_point + 1) % 2
+            direction = self.patrol_points[self.current_point]
+            return f"MOVE {direction[0]} {direction[1]}"
 
 
 class Defender(HeroBase):
@@ -133,11 +205,9 @@ class Defender(HeroBase):
         super().__init__(_id, position, _health)
 
     def update_threats(self, _threats: List[Monster]):
+        super(Defender, self).update_threats(_threats)
         direct_threats = [t for t in _threats if len(t.pursued_by) <= 0 and t.dist_to(base_pos) < self.MIN_DEF_RANGE]
-
-        biggest_threat = direct_threats[0] if len(direct_threats) > 0 \
-            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
-            else None
+        biggest_threat = self.define_biggest_threat(direct_threats, _threats)
 
         if biggest_threat is not None:
             if self.pursuing is None:
@@ -147,13 +217,6 @@ class Defender(HeroBase):
         else:
             if self.pursuing is not None:
                 self.stop_pursuing()
-
-    def should_stop_pursuing(self, threat: Monster) -> bool:
-        dist_to_pursuing = self.dist_to(self.pursuing.position)
-        dist_to_other = self.dist_to(threat.position)
-        other_is_pursued = len(threat.pursued_by) > 0
-        mine_is_pursued_by_others = len(threat.pursued_by) > 1
-        return dist_to_pursuing > dist_to_other
 
 
 def heuristic(threat: Monster) -> float:
@@ -174,7 +237,10 @@ while True:
                                                                                                input().split()]
         if _type == 1:
             if _id not in heroes:
-                heroes[_id] = (Hero if len(heroes) < 2 else Defender)(_id, (x, y), health)
+                if len(heroes) >= 2:
+                    heroes[_id] = Defender(_id, (x, y), health)
+                else:
+                    heroes[_id] = Patroller(_id, (x, y), health, PATROL_POINTS[len(heroes)])
             else:
                 heroes[_id].update((x, y))
         elif _type == 0:
@@ -185,6 +251,8 @@ while True:
 
     threats = [v for v in monsters.values() if v.is_threat]
     threats.sort(key=lambda t: heuristic(t))
+
+    Facts.monsters_inside_security = sum(map(lambda t: t.near_base, threats))
 
     for h in heroes.values():
         h.update_threats(threats)
