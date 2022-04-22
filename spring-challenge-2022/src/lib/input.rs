@@ -8,7 +8,7 @@ macro_rules! parse_input {
 }
 
 pub struct Config {
-    pub base: Vec2<u32>,
+    pub base: Vec2<i32>,
     pub heroes: i32,
 }
 
@@ -46,7 +46,7 @@ pub fn init() -> Config {
     io::stdin().read_line(&mut input_line).unwrap();
     let heroes_per_player = parse_input!(input_line, i32); // Always 3
     Config {
-        base: vec2!(base_x as u32, base_y as u32),
+        base: vec2!(base_x, base_y),
         heroes: heroes_per_player,
     }
 }
@@ -87,7 +87,7 @@ pub fn parse_turn() -> Turn {
             shield_life,
             trajectory: vec2!(vx, vy),
             near_base: near_base == 1,
-            threat_for
+            threat_for,
         }
     }).collect();
 

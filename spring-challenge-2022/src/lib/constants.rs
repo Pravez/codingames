@@ -4,3 +4,4 @@ pub const HERO_DAMAGE: u32 = 2;
 pub const HERO_ATTACK_RADIUS: u32 = 800;
 pub const HERO_MOVE_RADIUS: u32 = 800;
 pub const BASE_TAUNT_RADIUS: u32 = 5000;
+pub const BASE_SIGHT_RADIUS: u32 = 6500;

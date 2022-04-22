@@ -5,7 +5,8 @@ use crate::lib::base::vec::Vec2;
 
 mod game;
 mod lib;
-mod unit;
+mod hero;
+mod monster;
 
 fn main() {
     let config = init();
