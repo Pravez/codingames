@@ -74,7 +74,7 @@ def processMod(line, curIndent=''):
             os.chdir('./%s' % modName);
             with open('./mod.rs', 'r') as subFile:
                 modContents = scan(subFile, curIndent + INDENT_STRING)
-            os.chdir('..')
+            os.chdir('../..')
         return "%s%s mod %s {\n%s\n%s}" % (curIndent, publicity, modName, modContents, curIndent)
     else:
         return None
