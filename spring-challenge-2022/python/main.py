@@ -34,7 +34,7 @@ class Unit:
 class Monster(Unit):
     near_base: bool
     is_threat: bool
-    pursued_by: Optional[List[Unit]]
+    pursued_by: List[Unit]
     speed: Tuple[int, int]
     will_hit_in: int
 
@@ -42,7 +42,7 @@ class Monster(Unit):
         super().__init__(_id, position, _health)
         self.near_base = _near_base
         self.is_threat = is_threat
-        self.pursued_by = None
+        self.pursued_by = []
         self.speed = speed
 
     def update(self, position, _near_base, is_threat, _health, speed):
@@ -84,20 +84,31 @@ class Hero(Unit):
         direct_threats = [t for t in _threats if t.pursued_by is None or (t.near_base and t.health >= 9)]
         if self.defender:
             direct_threats = [t for t in direct_threats if t.dist_to(base_pos) < self.MIN_DEF_RANGE]
-        if len(direct_threats) > 0:
-            self.pursue(direct_threats[0])
-        else:
-            self.stop_pursuing()
-            if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE:
-                self.pursue(_threats[0])
+
+        biggest_threat = direct_threats[0] if len(direct_threats) > 0 \
+            else _threats[0] if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE \
+            else None
+
+        if self.is_not_pursuing_or_should_stop(biggest_threat):
+            self.pursue(biggest_threat) if biggest_threat is not None else self.stop_pursuing()
+
+    def is_not_pursuing_or_should_stop(self, threat: Monster) -> bool:
+        if self.pursuing is None: return True
+        dist_to_pursuing = self.dist_to(self.pursuing.position)
+        dist_to_other = self.dist_to(threat.position)
+        other_is_pursued = len(threat.pursued_by) > 0
+        mine_is_pursued_by_others = len(threat.pursued_by) > 1
+        return dist_to_pursuing > dist_to_other or (not other_is_pursued and mine_is_pursued_by_others)
 
     def pursue(self, monster: Monster):
+        if self.pursuing is not None:
+            self.stop_pursuing()
         self.pursuing = monster
-        monster.pursued_by = [self] if monster.pursued_by is None else monster.pursued_by + [self]
+        monster.pursued_by.append(self)
 
     def stop_pursuing(self):
         if self.pursuing is not None:
-            self.pursuing.pursued_by = None
+            self.pursuing.pursued_by = self.pursuing.pursued_by.remove(self)
         self.pursuing = None
 
     def next_move(self) -> str:
