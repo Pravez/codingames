@@ -1,47 +1,41 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::f32::consts::PI;
-use std::ops::Index;
+use std::rc::Rc;
 
-use crate::{Vec2, vec2};
-use crate::lib::base::alg::place_on_circle_at;
-use crate::lib::constants::BASE_SIGHT_RADIUS;
-use crate::lib::input::{Config, InputUnit, Turn};
-use crate::lib::structures::UnitType;
 use crate::hero::Hero;
+use crate::lib::input::{Config, Turn};
+use crate::lib::structures::UnitType;
+use crate::lib::unit::Unit;
 use crate::monster::Monster;
+use crate::Vec2;
 
-pub struct Game {
+pub struct Game<'a> {
     pub base: Vec2<i32>,
-    pub heroes: HashMap<i32, Hero>,
-    pub threats: Vec<Monster>,
-    pub monsters: HashMap<i32, Monster>
+    pub heroes: HashMap<i32, Hero<'a>>,
+    pub monsters: HashMap<i32, Monster>,
 }
 
-impl Game {
+impl<'a> Game<'a> {
     const HERO_VIEW_RADIUS: u32 = 3000;
 
     pub fn new(config: &Config) -> Self {
         Game {
             base: config.base.clone(),
             heroes: HashMap::new(),
-            threats: Vec::new(),
-            monsters: HashMap::new()
+            monsters: HashMap::new(),
         }
     }
 
-    fn update_units(&mut self, units: &Vec<InputUnit>) {
-        for x in units {
+    pub fn update(&mut self, turn: &Turn) {
+        for x in &turn.units {
             match x.unit_type {
                 UnitType::MONSTER => {
                     if !self.monsters.contains_key(&x.id) {
-                        self.monsters.insert(x.id, Monster::new(x.id, x.position, x.health, 0));
+                        self.monsters.insert(x.id, Monster::new(x.id, x.position, x.health, x.threat_for == 1));
                     } else if x.health <= 0 {
                         self.monsters.remove(&x.id);
                     } else {
-                        self.monsters.get_mut(&x.id).map(|m| {
-                            m.update_position(&x.position);
-                            m.health = x.health;
-                        });
+                        self.monsters.get_mut(&x.id).map(|m| m.update(&x.position, x.health));
                     }
                 }
                 UnitType::HERO => {
@@ -54,23 +48,17 @@ impl Game {
                 _ => {}
             }
         }
-        self.threats = self.monsters.values().map(|m|m.)
     }
 
-    fn update_sights(&mut self) {
-        let monsters = self.threats.values().collect::<Vec<_>>();
-        for mut h in self.heroes.values_mut() {
-            h.update_range(&monsters);
-        }
-    }
-
-    pub fn update(&mut self, turn: &Turn) {
-        self.update_units(&turn.units);
-        self.update_sights();
+    pub fn update_threats(&'a mut self) {
+        let threats = self.monsters.values()
+            .filter(|m| m.is_threat)
+            .collect::<Vec<_>>();
+        self.heroes.values_mut().map(|h| h.update_threats(&threats));
     }
 
     // In the first league: MOVE <x> <y> | WAIT; In later leagues: | SPELL <spellParams>;
     pub fn play(&mut self, hero: &i32) -> String {
-        self.heroes.get_mut(hero).map(|h| h.next_move()).unwrap()
+        self.heroes.get(hero).map(|h| h.next_move()).unwrap()
     }
 }

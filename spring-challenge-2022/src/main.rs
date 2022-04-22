@@ -13,6 +13,7 @@ fn main() {
     let mut game = Game::new(&config);
     loop {
         game.update(&parse_turn());
+        game.update_threats();
         for hero in 0..config.heroes {
             println!("{}", game.play(&hero));
         }
