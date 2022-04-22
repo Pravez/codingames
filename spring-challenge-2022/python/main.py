@@ -61,14 +61,20 @@ class Monster(Unit):
 
 
 class Hero(Unit):
-    MAX_DIST_TO_BASE = 1500
+    IDLE_POS = 2500
+    MIN_DEF_RANGE = 6500
     pursuing: Optional[Monster]
     dist_to_base: float
+    defender: bool
 
-    def __init__(self, _id, position, _health):
+    def __init__(self, _id, position, _health, defender=False):
         super().__init__(_id, position, _health)
         self.dist_to_base = 0
         self.pursuing = None
+        self.defender = defender
+
+    def set_defender(self, defender: bool):
+        self.defender = defender
 
     def update(self, position):
         self.position = position
@@ -76,11 +82,13 @@ class Hero(Unit):
 
     def update_threats(self, _threats: List[Monster]):
         direct_threats = [t for t in _threats if t.pursued_by is None or (t.near_base and t.health >= 9)]
+        if self.defender:
+            direct_threats = [t for t in direct_threats if t.dist_to(base_pos) < self.MIN_DEF_RANGE]
         if len(direct_threats) > 0:
             self.pursue(direct_threats[0])
         else:
             self.stop_pursuing()
-            if len(_threats) > 0:
+            if len(_threats) > 0 and _threats[0].dist_to(base_pos) < self.MIN_DEF_RANGE:
                 self.pursue(_threats[0])
 
     def pursue(self, monster: Monster):
@@ -96,7 +104,7 @@ class Hero(Unit):
         if self.pursuing is not None:
             return f"MOVE {self.pursuing.position[0]} {self.pursuing.position[1]}"
         else:
-            return f"MOVE 2500 2500"
+            return f"MOVE {abs(base_x - self.IDLE_POS)} {abs(base_y - self.IDLE_POS)}"
 
 
 def heuristic(threat: Monster) -> float:
@@ -117,7 +125,7 @@ while True:
                                                                                                input().split()]
         if _type == 1:
             if _id not in heroes:
-                heroes[_id] = Hero(_id, (x, y), health)
+                heroes[_id] = Hero(_id, (x, y), health, len(heroes) >= 2)
             else:
                 heroes[_id].update((x, y))
         elif _type == 0:
@@ -126,7 +134,7 @@ while True:
             else:
                 monsters[_id].update((x, y), near_base, threat_for == 1, health, (vx, vy))
 
-    threats = [v for v in monsters.values() if v.is_threat and v.dist_to(base_pos) < 7500]
+    threats = [v for v in monsters.values() if v.is_threat]
     threats.sort(key=lambda t: heuristic(t))
 
     for h in heroes.values():
