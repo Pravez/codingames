@@ -50,8 +50,9 @@ class Monster(Unit):
     current_health: int
     lasting_health_percent: float
     will_be_controlled_by: Optional[Unit]
+    is_controlled: bool
 
-    def __init__(self, _id, position, _near_base, is_threat, _health, speed):
+    def __init__(self, _id, position, _near_base, is_threat, _health, speed, _is_controlled):
         super().__init__(_id, position, _health)
         self.near_base = _near_base
         self.is_threat = is_threat
@@ -60,8 +61,9 @@ class Monster(Unit):
         self.lasting_health_percent = 1
         self.current_health = self.health
         self.will_be_controlled_by = None
+        self.is_controlled = _is_controlled
 
-    def update(self, position, _near_base, is_threat, _health, speed):
+    def update(self, position, _near_base, is_threat, _health, speed, _is_controlled):
         self.position = position
         self.current_health = _health
         self.lasting_health_percent = self.current_health / self.health
@@ -69,6 +71,7 @@ class Monster(Unit):
         self.is_threat = is_threat
         self.speed = speed
         self.will_be_controlled_by = None
+        self.is_controlled = _is_controlled
         if self.health <= 0:
             self.dead()
 
@@ -126,7 +129,8 @@ class HeroBase(Unit):
             else None
 
     def should_wind(self):
-        if mana < 10 or self.dist_to(self.pursuing.position) > self.MIN_WIND_DIST_AROUND_HERO: return False
+        if mana < 10 or self.dist_to(
+                self.pursuing.position) > self.MIN_WIND_DIST_AROUND_HERO or self.pursuing.is_controlled: return False
         dist_to_base = self.pursuing.dist_to(base_pos)
         if dist_to_base > self.MIN_WIND_DIST: return False
         percent_near = 1 - (dist_to_base / self.MIN_WIND_DIST)
@@ -139,7 +143,7 @@ class HeroBase(Unit):
         if Facts.monsters_inside_security >= self.MAX_MONSTERS_INSIDE_SECURITY or mana < 10: return None
         concerned = [t for t in self.current_threats if
                      not t.near_base and t.dist_to(base_pos) < self.MAX_DIST_TO_BASE_TO_CONTROL and self.dist_to(
-                         t.position) < self.MIN_DIST_TO_CONTROL]
+                         t.position) < self.MIN_DIST_TO_CONTROL and not t.is_controlled]
         if len(concerned) <= 0 or sum(
                 map(lambda t: t.health, concerned)) < self.MIN_CUMULATED_HEALTH_TO_CONTROL: return None
         concerned.sort(key=lambda k: k.current_health, reverse=True)
@@ -245,9 +249,9 @@ while True:
                 heroes[_id].update((x, y))
         elif _type == 0:
             if _id not in monsters:
-                monsters[_id] = Monster(_id, (x, y), near_base, threat_for == 1, health, (vx, vy))
+                monsters[_id] = Monster(_id, (x, y), near_base, threat_for == 1, health, (vx, vy), is_controlled)
             else:
-                monsters[_id].update((x, y), near_base, threat_for == 1, health, (vx, vy))
+                monsters[_id].update((x, y), near_base, threat_for == 1, health, (vx, vy), is_controlled)
 
     threats = [v for v in monsters.values() if v.is_threat]
     threats.sort(key=lambda t: heuristic(t))
