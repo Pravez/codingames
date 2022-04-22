@@ -2,13 +2,19 @@ import math
 import sys
 from typing import Tuple, Optional, List
 
+import numpy as np
+
 base_x, base_y = [int(i) for i in input().split()]
 base_pos = (base_x, base_y)
 heroes_per_player = int(input())  # Always 3
 
 
-def printerr(hero: int, msg: str):
+def hprinterr(hero: int, msg: str):
     print(f"{hero}: {msg}", file=sys.stderr, flush=True)
+
+
+def mprinterr(monster: int, msg: str):
+    print(f"{monster}: {msg}", file=sys.stderr, flush=True)
 
 
 class Unit:
@@ -29,18 +35,29 @@ class Monster(Unit):
     near_base: bool
     is_threat: bool
     pursued_by: Optional[List[Unit]]
+    speed: Tuple[int, int]
+    will_hit_in: int
 
-    def __init__(self, _id, position, _near_base, is_threat, _health):
+    def __init__(self, _id, position, _near_base, is_threat, _health, speed):
         super().__init__(_id, position, _health)
         self.near_base = _near_base
         self.is_threat = is_threat
         self.pursued_by = None
+        self.speed = speed
 
-    def update(self, position, _near_base, is_threat, _health):
+    def update(self, position, _near_base, is_threat, _health, speed):
         self.position = position
         self.health = _health
         self.near_base = _near_base
         self.is_threat = is_threat
+        self.speed = speed
+        if self.is_threat:
+            self._calculate_time_before_hitting()
+            mprinterr(self._id, f"Will hit in {self.will_hit_in}")
+
+    def _calculate_time_before_hitting(self):
+        self.will_hit_in = np.linalg.norm((base_x - self.position[0], base_y - self.position[1])) / np.linalg.norm(
+            self.speed)
 
 
 class Hero(Unit):
@@ -78,10 +95,8 @@ class Hero(Unit):
     def next_move(self) -> str:
         if self.pursuing is not None:
             return f"MOVE {self.pursuing.position[0]} {self.pursuing.position[1]}"
-        elif self.dist_to_base > self.MAX_DIST_TO_BASE:
-            return f"MOVE {base_x} {base_y}"
         else:
-            return "WAIT"
+            return f"MOVE 2500 2500"
 
 
 def heuristic(threat: Monster) -> float:
@@ -107,11 +122,11 @@ while True:
                 heroes[_id].update((x, y))
         elif _type == 0:
             if _id not in monsters:
-                monsters[_id] = Monster(_id, (x, y), near_base, threat_for == 1, health)
+                monsters[_id] = Monster(_id, (x, y), near_base, threat_for == 1, health, (vx, vy))
             else:
-                monsters[_id].update((x, y), near_base, threat_for == 1, health)
+                monsters[_id].update((x, y), near_base, threat_for == 1, health, (vx, vy))
 
-    threats = [v for v in monsters.values() if v.is_threat]
+    threats = [v for v in monsters.values() if v.is_threat and v.dist_to(base_pos) < 7500]
     threats.sort(key=lambda t: heuristic(t))
 
     for h in heroes.values():
