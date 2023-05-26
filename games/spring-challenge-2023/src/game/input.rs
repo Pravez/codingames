@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::io;
 use std::io::BufRead;
-use crate::game::game::{Game, HexTile};
+use std::time::{Duration, Instant};
+use crate::game::game::{Direction, Game, HexTile, TileType};
 
 #[warn(dead_code)]
 pub fn extract_inputs() {
@@ -35,11 +36,12 @@ pub fn parse_tiles(number_of_cells: i32) -> HashMap<i32, HexTile> {
         let inputs = input_line.split(" ").collect::<Vec<_>>();
         (index, HexTile {
             id: index as i32,
-            tile_type: parse_input!(inputs[0], i32),
+            tile_type: TileType::from(parse_input!(inputs[0], i32)),
             resources: parse_input!(inputs[1], i32),
             ants: 0,
             opponent_ants: 0,
-            neighbours: (2..7).into_iter().map(|i| parse_input!(inputs[i], i32)).collect(),
+            neighbours: (2..7).into_iter().map(|i| (Direction::from(i), parse_input!(inputs[i as usize], i32))).collect(),
+            coordinates: (0, 0, 0),
         })
     }).collect()
 }
@@ -66,6 +68,40 @@ pub fn parse_initial_inputs() -> Game {
         bases,
         opponent_bases,
         tiles,
+        crystals_indexes: vec![],
     }
 }
 
+pub fn add_coordinates(left: (i32, i32, i32), right: (i32, i32, i32)) -> (i32, i32, i32) {
+    (left.0 + right.0, left.1 + right.1, left.2 + right.2)
+}
+
+pub fn build_map(tiles: &HashMap<i32, HexTile>, start: &mut HexTile) {
+    start.coordinates = (0, 0, 0);
+
+    let mut visited = HashMap::<i32, &HexTile>::new();
+    let mut to_visit = vec![start.id];
+
+    let start = Instant::now();
+    let mut index = 0;
+    while visited.len() != tiles.len() {
+        let next_visit = to_visit.iter().flat_map(|id| {
+            let tile = tiles.get(&id).unwrap();
+            visited.insert(*id, tile);
+
+            let neighbours = tile.neighbours.iter()
+                .filter(|(_, id)| !visited.contains_key(id) && *id != -1)
+                .collect::<Vec<_>>();
+            neighbours.iter().for_each(|(dir, id)| {
+                let mut current = tiles.get(id).unwrap().to_owned();
+                current.coordinates = add_coordinates(tile.coordinates, dir.to_coordinates());
+            });
+            neighbours.iter().map(|(_, id)| *id).collect::<Vec<_>>()
+        }).collect::<Vec<_>>();
+
+        to_visit.clear();
+        to_visit.extend(next_visit.iter());
+        index += 1;
+    }
+    eprintln!("Built map in {} steps ({:?})", index, start.elapsed());
+}
