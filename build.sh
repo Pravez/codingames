@@ -2,4 +2,4 @@
 
 PROJECT=$1
 
-python3 lib/rust/bundler.py -i $PROJECT/src/main.rs -o $PROJECT/codingame.rs
+python3 lib/rust/bundler.py -i games/$PROJECT/src/main.rs -o games/$PROJECT/codingame.rs
