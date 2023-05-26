@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use crate::game::input::{parse_tiles, update_tiles};
 
@@ -74,6 +75,22 @@ pub struct HexTile {
     pub coordinates: (i32, i32, i32),
 }
 
+impl HexTile {
+    pub fn dist_to(&self, other: &HexTile) -> i32 {
+        (self.coordinates.0 - other.coordinates.0).abs() + (self.coordinates.1 - other.coordinates.1).abs() + (self.coordinates.2 - other.coordinates.2).abs()
+    }
+
+    pub fn update_coordinates(&mut self, coordinates: (i32, i32, i32)) {
+        self.coordinates = coordinates
+    }
+
+    pub fn update_data(&mut self, resources: i32, ants: i32, opponent_ants: i32) {
+        self.resources = resources;
+        self.ants = ants;
+        self.opponent_ants = opponent_ants;
+    }
+}
+
 pub enum Action {
     WAIT,
     LINE(i32, i32, i32),
@@ -83,15 +100,20 @@ pub enum Action {
 
 impl Game {
     pub fn update(&mut self) {
-        self.crystals_indexes = self.tiles.values().filter(|t| t.tile_type == TileType::Crystals).map(|t| t.id).collect();
-    }
-
-    pub fn dist(&self, a: i32, b: i32) -> i32 {
-        (a - b).abs()
+        self.crystals_indexes = self.tiles
+            .values()
+            .filter(|t| t.tile_type == TileType::Crystals && t.resources > 0)
+            .map(|t| t.id)
+            .collect();
     }
 
     pub fn play(&self) -> Vec<Action> {
-        vec![Action::WAIT]
+        let mut nearest_crystals = self.crystals_indexes
+            .iter()
+            .map(|c| (c, self.tiles[c].dist_to(&self.tiles[self.bases.first().unwrap()])))
+            .collect::<Vec<_>>();
+        nearest_crystals.sort_by(|a, b| a.1.cmp(&b.1));
+        vec![Action::LINE(*self.bases.first().unwrap(), *nearest_crystals[0].0, 1)]
     }
 }
 

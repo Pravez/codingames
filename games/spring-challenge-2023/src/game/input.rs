@@ -49,12 +49,8 @@ pub fn parse_tiles(number_of_cells: i32) -> HashMap<i32, HexTile> {
 pub fn update_tiles(tiles: &mut HashMap<i32, HexTile>) {
     (0..tiles.len()).into_iter().for_each(|index| {
         let data = read_line();
-        eprintln!("{}", data);
-        let mut tile = tiles.get(&(index as i32)).unwrap().to_owned();
         let values = data.split(" ").collect::<Vec<_>>();
-        tile.resources = parse_input!(values[0], i32);
-        tile.ants = parse_input!(values[1], i32);
-        tile.opponent_ants = parse_input!(values[2], i32);
+        tiles.get_mut(&(index as i32)).map(|t| t.update_data(parse_input!(values[0], i32), parse_input!(values[1], i32), parse_input!(values[2], i32)));
     })
 }
 
@@ -76,29 +72,29 @@ pub fn add_coordinates(left: (i32, i32, i32), right: (i32, i32, i32)) -> (i32, i
     (left.0 + right.0, left.1 + right.1, left.2 + right.2)
 }
 
-pub fn build_map(tiles: &HashMap<i32, HexTile>, start: &mut HexTile) {
+pub fn build_map(tiles: &mut HashMap<i32, HexTile>, start: &mut HexTile) {
     start.coordinates = (0, 0, 0);
 
-    let mut visited = HashMap::<i32, &HexTile>::new();
+    let mut visited = HashMap::<i32, &str>::new();
     let mut to_visit = vec![start.id];
 
     let start = Instant::now();
     let mut index = 0;
     while visited.len() != tiles.len() {
         let next_visit = to_visit.iter().flat_map(|id| {
-            let tile = tiles.get(&id).unwrap();
-            visited.insert(*id, tile);
+            let tile = tiles.get(&id).unwrap().to_owned();
+            visited.insert(*id, "");
 
             let neighbours = tile.neighbours.iter()
                 .filter(|(_, id)| !visited.contains_key(id) && *id != -1)
                 .collect::<Vec<_>>();
             neighbours.iter().for_each(|(dir, id)| {
-                let mut current = tiles.get(id).unwrap().to_owned();
-                current.coordinates = add_coordinates(tile.coordinates, dir.to_coordinates());
+                tiles.get_mut(id).map(|m| m.update_coordinates(add_coordinates(tile.coordinates, dir.to_coordinates())));
             });
             neighbours.iter().map(|(_, id)| *id).collect::<Vec<_>>()
         }).collect::<Vec<_>>();
 
+        eprintln!("{}/{}", visited.len(), tiles.len());
         to_visit.clear();
         to_visit.extend(next_visit.iter());
         index += 1;

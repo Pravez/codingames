@@ -6,7 +6,7 @@ mod game;
 fn main() {
     let mut game = parse_initial_inputs();
     let mut initial_tile = game.tiles.get(&game.bases[0]).unwrap().to_owned();
-    build_map(&game.tiles, &mut initial_tile);
+    build_map(&mut game.tiles, &mut initial_tile);
 
     loop {
         update_tiles(&mut game.tiles);
